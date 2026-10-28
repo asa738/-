@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#efe9dc">
+  <meta name="description" content="一个安静、克制的单词听写播放器，支持自定义词表、间隔、语速与英文语音。">
+  <title>单词听写 · 练习台</title>
+  <style>
+    :root {
+      --paper: #f7f3ea;
+      --paper-light: #fcfaf5;
+      --paper-deep: #e9e2d4;
+      --ink: #26302b;
+      --ink-soft: #667069;
+      --ink-faint: #92978f;
+      --green: #365444;
+      --green-dark: #294235;
+      --green-pale: #dfe6dd;
+      --orange: #b7643d;
+      --orange-pale: #f0dfd2;
+      --line: #d7d0c2;
+      --line-dark: #b9b1a3;
+      --danger: #9b443e;
+      --sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+      --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, "Songti SC", serif;
+      --shadow: 0 18px 45px rgba(53, 47, 37, .09), 0 2px 6px rgba(53, 47, 37, .05);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: light;
+    }
+
+    body {
+      min-width: 300px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 9% 10%, rgba(255, 255, 255, .7), transparent 24rem),
+        radial-gradient(circle at 93% 70%, rgba(180, 165, 136, .12), transparent 28rem),
+        var(--paper-deep);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      content: "";
+      opacity: .28;
+      background-image:
+        repeating-linear-gradient(0deg, transparent 0 3px, rgba(67, 60, 47, .018) 3px 4px),
+        repeating-linear-gradient(90deg, transparent 0 5px, rgba(67, 60, 47, .012) 5px 6px);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      color: inherit;
+      font: inherit;
+    }
+
+    button,
+    summary,
+    select {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--orange);
+      outline-offset: 3px;
+    }
+
+    .sketch-page {
+      width: min(1080px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 38px 0 54px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      margin-bottom: 24px;
+    }
+
+    .identity {
+      display: flex;
+      align-items: center;
+      gap: 17px;
+    }
+
+    .brand-mark {
+      position: relative;
+      display: grid;
+      width: 48px;
+      height: 48px;
+      flex: 0 0 48px;
+      place-items: center;
+      color: #f8f4eb;
+      border-radius: 4px 7px 4px 5px;
+      background: var(--green);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+      font-family: var(--serif);
+      font-size: 20px;
+      font-style: italic;
+    }
+
+    .brand-mark::after {
+      position: absolute;
+      right: 8px;
+      bottom: 7px;
+      width: 19px;
+      height: 1px;
+      content: "";
+      opacity: .65;
+      background: currentColor;
+      transform: rotate(-5deg);
+    }
+
+    .title-copy {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--orange);
+      font-family: var(--serif);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .22em;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(25px, 3.2vw, 34px);
+      font-weight: 600;
+      letter-spacing: .04em;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 7px 0 0;
+      color: var(--ink-soft);
+      font-size: 11px;
+      letter-spacing: .03em;
+    }
+
+    .browser-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+      border-radius: 99px;
+      background: rgba(252, 250, 245, .55);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .browser-state::before {
+      width: 6px;
+      height: 6px;
+      content: "";
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(54, 84, 68, .1);
+    }
+
+    .browser-state.is-warning::before {
+      background: var(--danger);
+      box-shadow: 0 0 0 3px rgba(155, 68, 62, .1);
+    }
+
+    .notice {
+      margin-bottom: 14px;
+      padding: 11px 14px;
+      color: #713a31;
+      border: 1px solid #d8b7a8;
+      border-radius: 4px;
+      background: #f7e8df;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .notice[hidden] {
+      display: none;
+    }
+
+    .player {
+      position: relative;
+      padding: 17px;
+      border: 1px solid #c9c1b2;
+      border-radius: 5px;
+      background: var(--paper-light);
+      box-shadow: var(--shadow);
+    }
+
+    .player::before {
+      position: absolute;
+      inset: 7px;
+      pointer-events: none;
+      content: "";
+      border: 1px solid rgba(64, 57, 46, .065);
+      border-radius: 2px;
+    }
+
+    .player-topline {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 3px 10px 12px;
+      color: var(--ink-soft);
+      font-family: var(--serif);
+      font-size: 10px;
+      letter-spacing: .06em;
+    }
+
+    .player-topline strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .word-rails {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 5px;
+      padding: 0 10px 13px;
+    }
+
+    .word-rail {
+      height: 4px;
+      flex: 1 1 0;
+      min-width: 3px;
+      border-radius: 99px;
+      background: #ded8cc;
+      transition: background .3s ease, transform .3s ease;
+    }
+
+    .word-rail.is-done {
+      background: var(--green);
+    }
+
+    .word-rail.is-current {
+      background: var(--orange);
+      transform: scaleY(1.45);
+    }
+
+    .word-stage {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 142px;
+      gap: 24px;
+      align-items: center;
+      min-height: 345px;
+      overflow: hidden;
+      padding: 34px 42px 34px 26px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(90deg, transparent 0 70px, rgba(183, 100, 61, .14) 70px 71px, transparent 71px),
+        repeating-linear-gradient(0deg, transparent 0 37px, rgba(67, 60, 47, .055) 37px 38px),
+        #fbf9f3;
+    }
+
+    .word-stage::after {
+      position: absolute;
+      top: 19px;
+      right: 20px;
+      width: 74px;
+      height: 17px;
+      content: "";
+      opacity: .55;
+      background: rgba(213, 193, 157, .28);
+      transform: rotate(2deg);
+      clip-path: polygon(1% 5%, 99% 0, 96% 91%, 4% 100%);
+    }
+
+    .page-index {
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #a99f8f;
+      font-family: var(--serif);
+      font-size: 9px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    .word-main {
+      min-width: 0;
+      padding-left: 4px;
+    }
+
+    .stage-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 24px;
+      color: var(--ink-soft);
+      font-size: 10px;
+      letter-spacing: .06em;
+    }
+
+    .stage-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--orange);
+      transition: background .25s, box-shadow .25s;
+    }
+
+    .stage-meta.is-speaking .stage-dot {
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(54, 84, 68, .1);
+    }
+
+    .stage-meta.is-complete .stage-dot {
+      background: var(--green);
+    }
+
+    .position {
+      margin-left: auto;
+      color: var(--ink-faint);
+      font-family: var(--serif);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .word-block {
+      min-height: 170px;
+      padding: 24px 0 18px;
+    }
+
+    .word-caption {
+      margin: 0 0 6px;
+      color: var(--ink-faint);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .current-word {
+      display: block;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: clamp(48px, 7.3vw, 78px);
+      font-weight: 400;
+      letter-spacing: -.035em;
+      line-height: 1.1;
+      transition: color .2s ease, opacity .2s ease;
+    }
+
+    .current-word.is-masked {
+      color: var(--ink-faint);
+      font-size: clamp(42px, 6vw, 62px);
+      letter-spacing: .16em;
+    }
+
+    .word-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .mask-button {
+      padding: 0;
+      color: var(--ink-faint);
+      border: 0;
+      border-bottom: 1px dotted var(--line-dark);
+      background: transparent;
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    .mask-button:hover {
+      color: var(--orange);
+      border-color: currentColor;
+    }
+
+    .next-hint {
+      min-height: 38px;
+      max-width: 500px;
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .timer-wrap {
+      justify-self: end;
+      text-align: center;
+    }
+
+    .timer-ring {
+      position: relative;
+      width: 118px;
+      height: 118px;
+    }
+
+    .timer-ring svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      transform: rotate(-90deg);
+    }
+
+    .timer-track,
+    .timer-progress {
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .timer-track {
+      stroke: #ddd7cb;
+    }
+
+    .timer-progress {
+      stroke: var(--orange);
+      stroke-linecap: round;
+      stroke-dasharray: 301.593;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset .12s linear, stroke .25s ease;
+    }
+
+    .timer-ring.is-speaking .timer-progress {
+      stroke: var(--green);
+      animation: soft-pulse 1.8s ease-in-out infinite;
+    }
+
+    .timer-ring.is-paused .timer-progress {
+      stroke: var(--ink-faint);
+      animation: none;
+    }
+
+    .timer-ring.is-complete .timer-progress {
+      stroke: var(--green);
+    }
+
+    .timer-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-top: 3px;
+    }
+
+    .timer-number {
+      font-family: var(--serif);
+      font-size: 34px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .timer-unit {
+      margin-top: 7px;
+      color: var(--ink-faint);
+      font-size: 8px;
+      letter-spacing: .14em;
+    }
+
+    .timer-label {
+      margin: 8px 0 0;
+      color: var(--ink-soft);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .controls {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 9px 6px;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      color: var(--ink);
+      border: 1px solid var(--line-dark);
+      border-radius: 3px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .03em;
+      transition: transform .16s ease, color .18s ease, background .18s ease, border-color .18s ease;
+    }
+
+    .button:hover:not(:disabled) {
+      color: var(--green-dark);
+      border-color: var(--green);
+      background: var(--green-pale);
+      transform: translateY(-1px);
+    }
+
+    .button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: .36;
+    }
+
+    .button-primary {
+      min-width: 122px;
+      color: #fbf8ef;
+      border-color: var(--green);
+      background: var(--green);
+    }
+
+    .button-primary:hover:not(:disabled) {
+      color: #fff;
+      border-color: var(--green-dark);
+      background: var(--green-dark);
+    }
+
+    .button-pause {
+      min-width: 78px;
+    }
+
+    .button-pause.is-resume {
+      color: var(--green-dark);
+      border-color: var(--green);
+      background: var(--green-pale);
+    }
+
+    .button-note {
+      padding-inline: 10px;
+      color: var(--ink-soft);
+      border-color: transparent;
+      font-weight: 400;
+    }
+
+    .button-note:hover:not(:disabled) {
+      color: var(--danger);
+      border-color: #d7b9b2;
+      background: #f7e9e4;
+    }
+
+    .control-separator {
+      width: 1px;
+      height: 20px;
+      margin: 0 2px;
+      background: var(--line);
+    }
+
+    .shortcut-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 4px 10px 3px;
+      color: var(--ink-faint);
+      font-size: 9px;
+    }
+
+    kbd {
+      display: inline-block;
+      min-width: 20px;
+      margin: 0 2px;
+      padding: 1px 5px;
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+      border-bottom-color: var(--line-dark);
+      border-radius: 3px;
+      background: #f3efe6;
+      font-family: var(--sans);
+      font-size: 8px;
+      text-align: center;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      gap: 15px;
+      margin-top: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid #ccc4b5;
+      border-radius: 4px;
+      background: rgba(250, 247, 239, .78);
+      box-shadow: 0 5px 14px rgba(55, 48, 38, .035);
+    }
+
+    .panel summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 50px;
+      padding: 0 18px;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .panel summary::after {
+      display: grid;
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      place-items: center;
+      color: var(--ink-soft);
+      content: "+";
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 400;
+      transition: transform .2s ease;
+    }
+
+    .panel[open] summary::after {
+      transform: rotate(45deg);
+    }
+
+    .summary-title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-family: var(--serif);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .summary-meta {
+      margin-left: auto;
+      color: var(--ink-faint);
+      font-size: 9px;
+      letter-spacing: .04em;
+    }
+
+    .panel-content {
+      padding: 2px 18px 19px;
+      border-top: 1px solid rgba(204, 196, 181, .65);
+    }
+
+    .setting-list {
+      display: grid;
+      gap: 15px;
+      padding-top: 17px;
+    }
+
+    .setting-row {
+      display: grid;
+      grid-template-columns: 105px minmax(0, 1fr) 50px;
+      gap: 13px;
+      align-items: center;
+    }
+
+    .setting-row.voice-row {
+      grid-template-columns: 105px minmax(0, 1fr);
+    }
+
+    .setting-label {
+      color: var(--ink-soft);
+      font-size: 10px;
+    }
+
+    .range-value {
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 20px;
+      margin: 0;
+      cursor: pointer;
+      appearance: none;
+      background: transparent;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 3px;
+      border-radius: 99px;
+      background: #d8d1c3;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      width: 14px;
+      height: 14px;
+      margin-top: -5.5px;
+      border: 2px solid var(--paper-light);
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 1px var(--green);
+      appearance: none;
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 3px;
+      border-radius: 99px;
+      background: #d8d1c3;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--paper-light);
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 1px var(--green);
+    }
+
+    select {
+      width: 100%;
+      min-width: 0;
+      height: 36px;
+      padding: 0 30px 0 10px;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #faf8f2;
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    .voice-note {
+      margin: 10px 0 0 118px;
+      color: var(--ink-faint);
+      font-size: 9px;
+      line-height: 1.6;
+    }
+
+    .word-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding-top: 14px;
+      color: var(--ink-soft);
+      font-size: 9px;
+    }
+
+    .word-toolbar strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .word-toolbar span:last-child {
+      text-align: right;
+    }
+
+    .word-input {
+      width: 100%;
+      height: 228px;
+      margin-top: 9px;
+      padding: 12px 14px;
+      resize: vertical;
+      color: #344139;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      outline: none;
+      background:
+        repeating-linear-gradient(0deg, transparent 0 27px, rgba(79, 100, 85, .12) 27px 28px),
+        #fbf9f3;
+      font-family: var(--serif);
+      font-size: 13px;
+      line-height: 28px;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .word-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(54, 84, 68, .08);
+    }
+
+    .word-input[readonly] {
+      opacity: .72;
+      cursor: default;
+    }
+
+    .input-foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 8px;
+      color: var(--ink-faint);
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .input-foot .dirty {
+      color: var(--orange);
+    }
+
+    .page-foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 22px 3px 0;
+      color: #77796f;
+      font-size: 9px;
+      line-height: 1.6;
+    }
+
+    .page-foot span:last-child {
+      font-family: var(--serif);
+      letter-spacing: .05em;
+      text-align: right;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 20;
+      max-width: min(420px, calc(100vw - 32px));
+      padding: 11px 16px;
+      color: #fbf8ef;
+      border-radius: 3px;
+      background: var(--ink);
+      box-shadow: 0 10px 30px rgba(36, 37, 32, .2);
+      font-size: 11px;
+      line-height: 1.5;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .toast.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @keyframes soft-pulse {
+      0%, 100% { opacity: .55; }
+      50% { opacity: 1; }
+    }
+
+    @media (max-width: 820px) {
+      .sketch-page {
+        width: min(100% - 28px, 680px);
+        padding-top: 24px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        margin-bottom: 18px;
+      }
+
+      .browser-state {
+        padding: 7px 10px;
+      }
+
+      .word-stage {
+        grid-template-columns: 28px minmax(0, 1fr) 112px;
+        gap: 16px;
+        min-height: 320px;
+        padding: 26px 24px 26px 13px;
+        background:
+          linear-gradient(90deg, transparent 0 50px, rgba(183, 100, 61, .12) 50px 51px, transparent 51px),
+          repeating-linear-gradient(0deg, transparent 0 37px, rgba(67, 60, 47, .05) 37px 38px),
+          #fbf9f3;
+      }
+
+      .timer-ring {
+        width: 106px;
+        height: 106px;
+      }
+
+      .current-word {
+        font-size: clamp(43px, 10vw, 66px);
+      }
+
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .word-input {
+        height: 205px;
+      }
+
+      .controls {
+        flex-wrap: wrap;
+      }
+
+      .button-primary {
+        flex: 1 1 130px;
+      }
+
+      .shortcut-line {
+        display: none;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .sketch-page {
+        width: calc(100% - 20px);
+        padding: 16px 0 32px;
+      }
+
+      .topbar {
+        gap: 12px;
+      }
+
+      .identity {
+        gap: 11px;
+      }
+
+      .brand-mark {
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
+        font-size: 17px;
+      }
+
+      .subtitle {
+        display: none;
+      }
+
+      .browser-state {
+        margin-top: 3px;
+        padding: 6px 8px;
+        font-size: 8px;
+      }
+
+      .player {
+        padding: 10px;
+      }
+
+      .player::before {
+        inset: 5px;
+      }
+
+      .player-topline {
+        padding-inline: 6px;
+      }
+
+      .word-rails {
+        padding-inline: 6px;
+      }
+
+      .word-stage {
+        display: block;
+        min-height: 0;
+        padding: 22px 19px 24px 22px;
+        background:
+          linear-gradient(90deg, transparent 0 18px, rgba(183, 100, 61, .12) 18px 19px, transparent 19px),
+          repeating-linear-gradient(0deg, transparent 0 34px, rgba(67, 60, 47, .05) 34px 35px),
+          #fbf9f3;
+      }
+
+      .page-index {
+        display: none;
+      }
+
+      .word-block {
+        min-height: 142px;
+        padding: 25px 0 16px;
+      }
+
+      .current-word {
+        font-size: clamp(41px, 13vw, 57px);
+        line-height: 1.16;
+      }
+
+      .current-word.is-masked {
+        font-size: 38px;
+      }
+
+      .next-hint {
+        min-height: 34px;
+      }
+
+      .timer-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 14px;
+        margin-top: 17px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(185, 177, 163, .65);
+        text-align: left;
+      }
+
+      .timer-ring {
+        width: 82px;
+        height: 82px;
+        flex: 0 0 82px;
+      }
+
+      .timer-number {
+        font-size: 25px;
+      }
+
+      .timer-unit {
+        margin-top: 4px;
+        font-size: 7px;
+      }
+
+      .timer-label {
+        max-width: 120px;
+        margin: 0;
+        font-size: 10px;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+        padding: 13px 2px 3px;
+      }
+
+      .button-primary {
+        grid-column: 1 / -1;
+      }
+
+      .button {
+        min-height: 39px;
+        padding-inline: 10px;
+      }
+
+      .control-separator {
+        display: none;
+      }
+
+      .button-note {
+        grid-column: 1 / -1;
+        color: var(--ink-faint);
+      }
+
+      .setting-row {
+        grid-template-columns: 92px minmax(0, 1fr) 44px;
+        gap: 9px;
+      }
+
+      .setting-row.voice-row {
+        grid-template-columns: 92px minmax(0, 1fr);
+      }
+
+      .voice-note {
+        margin-left: 101px;
+      }
+
+      .summary-meta {
+        display: none;
+      }
+
+      .panel summary {
+        padding-inline: 14px;
+      }
+
+      .panel-content {
+        padding-inline: 14px;
+      }
+
+      .page-foot {
+        display: block;
+      }
+
+      .page-foot span {
+        display: block;
+        text-align: left;
+      }
+
+      .page-foot span:last-child {
+        margin-top: 5px;
+        text-align: left;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sketch-page">
+    <header class="topbar">
+      <div class="identity">
+        <div class="brand-mark" aria-hidden="true">Aa</div>
+        <div class="title-copy">
+          <p class="eyebrow">听写练习 / NO. 001</p>
+          <h1>单词听写</h1>
+          <p class="subtitle">听清一个词，留一点时间，把它写下来。</p>
+        </div>
+      </div>
+      <div class="browser-state" id="browserState">检测语音支持</div>
+    </header>
+
+    <div class="notice" id="supportNotice" role="alert" hidden>
+      当前浏览器不支持 Web Speech API。建议使用最新版 Edge、Chrome 或 Safari，并确认系统已安装英文语音。
+    </div>
+
+    <main>
+      <section class="player" aria-labelledby="playerTitle">
+        <h2 id="playerTitle" class="sr-only" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">听写播放控制台</h2>
+        <div class="player-topline">
+          <span>练习纸 / <strong>今日词表</strong></span>
+          <span id="overallProgress">第 01 个 · 共 10 个</span>
+        </div>
+
+        <div class="word-rails" id="wordRails" aria-hidden="true"></div>
+
+        <div class="word-stage">
+          <div class="page-index" aria-hidden="true">听 · 记 · 写</div>
+
+          <div class="word-main">
+            <div class="stage-meta" id="stageMeta" aria-live="polite">
+              <span class="stage-dot" aria-hidden="true"></span>
+              <span id="stageLabel">准备就绪</span>
+              <span class="position" id="positionLabel">01 / 10</span>
+            </div>
+
+            <div class="word-block">
+              <p class="word-caption">当前单词</p>
+              <span class="current-word" id="currentWord" lang="en">ambiguous</span>
+              <div class="word-actions">
+                <button class="mask-button" id="maskButton" type="button" aria-pressed="false">遮蔽单词</button>
+              </div>
+            </div>
+
+            <p class="next-hint" id="nextHint">开始后将朗读两遍，两个单词之间留有书写时间。</p>
+          </div>
+
+          <div class="timer-wrap">
+            <div class="timer-ring" id="timerRing" aria-hidden="true">
+              <svg viewBox="0 0 120 120">
+                <circle class="timer-track" cx="60" cy="60" r="48"></circle>
+                <circle class="timer-progress" id="timerProgress" cx="60" cy="60" r="48"></circle>
+              </svg>
+              <div class="timer-center">
+                <span class="timer-number" id="timerNumber">待</span>
+                <span class="timer-unit" id="timerUnit">准备</span>
+              </div>
+            </div>
+            <p class="timer-label" id="timerLabel">等待开始</p>
+          </div>
+        </div>
+
+        <div class="controls" aria-label="播放控制">
+          <button class="button button-primary" id="startButton" type="button">开始听写</button>
+          <button class="button button-pause" id="pauseButton" type="button" disabled>暂停</button>
+          <span class="control-separator" aria-hidden="true"></span>
+          <button class="button" id="replayButton" type="button" disabled>重播</button>
+          <button class="button" id="skipButton" type="button" disabled>跳过</button>
+          <button class="button" id="restartButton" type="button" disabled>从头</button>
+          <button class="button button-note" id="stopButton" type="button" disabled>停止</button>
+        </div>
+
+        <div class="shortcut-line" aria-hidden="true">
+          <span><kbd>空格</kbd> 暂停 / 继续　<kbd>R</kbd> 重播　<kbd>N</kbd> 跳过</span>
+          <span>语音只在本机生成，不会上传词表</span>
+        </div>
+      </section>
+
+      <section class="settings-grid" aria-label="听写设置">
+        <details class="panel" open>
+          <summary>
+            <span class="summary-title">播放设置 <span class="summary-meta">按自己的节奏来</span></span>
+          </summary>
+          <div class="panel-content">
+            <div class="setting-list">
+              <label class="setting-row" for="repeatCount">
+                <span class="setting-label">朗读次数</span>
+                <input id="repeatCount" type="range" min="1" max="5" step="1" value="2">
+                <output class="range-value" id="repeatCountValue" for="repeatCount">2 遍</output>
+              </label>
+
+              <label class="setting-row" for="repeatGap">
+                <span class="setting-label">重复间隔</span>
+                <input id="repeatGap" type="range" min="1" max="20" step="1" value="5">
+                <output class="range-value" id="repeatGapValue" for="repeatGap">5 秒</output>
+              </label>
+
+              <label class="setting-row" for="wordGap">
+                <span class="setting-label">单词间隔</span>
+                <input id="wordGap" type="range" min="3" max="30" step="1" value="10">
+                <output class="range-value" id="wordGapValue" for="wordGap">10 秒</output>
+              </label>
+
+              <label class="setting-row" for="speechRate">
+                <span class="setting-label">朗读语速</span>
+                <input id="speechRate" type="range" min="0.6" max="1.2" step="0.05" value="0.88">
+                <output class="range-value" id="speechRateValue" for="speechRate">0.88×</output>
+              </label>
+
+              <label class="setting-row voice-row" for="voiceSelect">
+                <span class="setting-label">英文语音</span>
+                <select id="voiceSelect">
+                  <option value="">系统默认英文语音</option>
+                </select>
+              </label>
+            </div>
+            <p class="voice-note" id="voiceNote">正在读取浏览器语音列表……</p>
+          </div>
+        </details>
+
+        <details class="panel" open>
+          <summary>
+            <span class="summary-title">本次词表 <span class="summary-meta">一行一个单词</span></span>
+          </summary>
+          <div class="panel-content">
+            <div class="word-toolbar">
+              <span><strong id="wordCount">10</strong> 个单词</span>
+              <span id="listState">修改后点击“从头”即可生效</span>
+            </div>
+            <textarea
+              class="word-input"
+              id="wordInput"
+              spellcheck="false"
+              autocomplete="off"
+              aria-label="听写单词表，一行一个单词"
+            ></textarea>
+            <div class="input-foot">
+              <span>支持直接粘贴；空行会自动忽略。</span>
+              <span id="inputHint">本机处理</span>
+            </div>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <footer class="page-foot">
+      <span>提示：倒计时按真实时间计算，切换标签页后再回来也不会错位。</span>
+      <span>安静练习工具 · 2026</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    // ============================================================
+    // 词表放在这里：一行一个单词，直接增删即可。
+    // ============================================================
+    const DEFAULT_WORDS = `ambiguous
+inevitable
+phenomenon
+reluctant
+sophisticated
+deteriorate
+consensus
+arbitrary
+coherent
+meticulous`;
+
+    const STORAGE_KEY = "quiet-dictation-settings-v1";
+    const CIRCUMFERENCE = 2 * Math.PI * 48;
+
+    const DEFAULT_SETTINGS = {
+      repeats: 2,
+      repeatGap: 5,
+      wordGap: 10,
+      rate: 0.88,
+      voiceKey: ""
+    };
+
+    const elements = {
+      browserState: document.querySelector("#browserState"),
+      supportNotice: document.querySelector("#supportNotice"),
+      overallProgress: document.querySelector("#overallProgress"),
+      wordRails: document.querySelector("#wordRails"),
+      stageMeta: document.querySelector("#stageMeta"),
+      stageLabel: document.querySelector("#stageLabel"),
+      positionLabel: document.querySelector("#positionLabel"),
+      currentWord: document.querySelector("#currentWord"),
+      nextHint: document.querySelector("#nextHint"),
+      timerRing: document.querySelector("#timerRing"),
+      timerProgress: document.querySelector("#timerProgress"),
+      timerNumber: document.querySelector("#timerNumber"),
+      timerUnit: document.querySelector("#timerUnit"),
+      timerLabel: document.querySelector("#timerLabel"),
+      maskButton: document.querySelector("#maskButton"),
+      startButton: document.querySelector("#startButton"),
+      pauseButton: document.querySelector("#pauseButton"),
+      replayButton: document.querySelector("#replayButton"),
+      skipButton: document.querySelector("#skipButton"),
+      restartButton: document.querySelector("#restartButton"),
+      stopButton: document.querySelector("#stopButton"),
+      repeatCount: document.querySelector("#repeatCount"),
+      repeatGap: document.querySelector("#repeatGap"),
+      wordGap: document.querySelector("#wordGap"),
+      speechRate: document.querySelector("#speechRate"),
+      voiceSelect: document.querySelector("#voiceSelect"),
+      repeatCountValue: document.querySelector("#repeatCountValue"),
+      repeatGapValue: document.querySelector("#repeatGapValue"),
+      wordGapValue: document.querySelector("#wordGapValue"),
+      speechRateValue: document.querySelector("#speechRateValue"),
+      voiceNote: document.querySelector("#voiceNote"),
+      wordInput: document.querySelector("#wordInput"),
+      wordCount: document.querySelector("#wordCount"),
+      listState: document.querySelector("#listState"),
+      inputHint: document.querySelector("#inputHint"),
+      toast: document.querySelector("#toast")
+    };
+
+    const synth = window.speechSynthesis;
+    const supportsSpeech = Boolean(synth && window.SpeechSynthesisUtterance);
+    let settings = loadSettings();
+    let voices = [];
+    let toastTimer = 0;
+    let fadeTimer = 0;
+    let lastWordShown = "";
+
+    const state = {
+      words: [],
+      index: 0,
+      repetition: 0,
+      phase: "ready",
+      running: false,
+      paused: false,
+      masked: false,
+      manualReplay: false,
+      manualContext: null,
+      pendingAfterSpeech: false,
+      speechToken: 0,
+      wordsDirty: false,
+      timerId: 0,
+      speechWatchdogId: 0,
+      wait: null
+    };
+
+    function clamp(value, min, max, fallback) {
+      const number = Number(value);
+      return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+    }
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        return {
+          repeats: Math.round(clamp(saved.repeats, 1, 5, DEFAULT_SETTINGS.repeats)),
+          repeatGap: Math.round(clamp(saved.repeatGap, 1, 20, DEFAULT_SETTINGS.repeatGap)),
+          wordGap: Math.round(clamp(saved.wordGap, 3, 30, DEFAULT_SETTINGS.wordGap)),
+          rate: clamp(saved.rate, 0.6, 1.2, DEFAULT_SETTINGS.rate),
+          voiceKey: typeof saved.voiceKey === "string" ? saved.voiceKey : ""
+        };
+      } catch (error) {
+        return { ...DEFAULT_SETTINGS };
+      }
+    }
+
+    function saveSettings() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      } catch (error) {
+        // 隐私模式可能禁用 localStorage，不影响本次播放。
+      }
+    }
+
+    function parseWords(text) {
+      return text
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .map((line) => line.trim().replace(/^[-*•]\s*/, ""))
+        .filter(Boolean);
+    }
+
+    function voiceKey(voice) {
+      return voice ? `${voice.voiceURI || voice.name}|${voice.lang}` : "";
+    }
+
+    function selectedVoice() {
+      return voices.find((voice) => voiceKey(voice) === settings.voiceKey) || null;
+    }
+
+    function currentWordText() {
+      return state.words[state.index] || parseWords(elements.wordInput.value)[0] || "—";
+    }
+
+    function formatPosition() {
+      const total = state.words.length || parseWords(elements.wordInput.value).length;
+      if (!total) return "暂无单词";
+      return `${String(Math.min(state.index + 1, total)).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
+    }
+
+    function updateSettingsUI() {
+      elements.repeatCount.value = String(settings.repeats);
+      elements.repeatGap.value = String(settings.repeatGap);
+      elements.wordGap.value = String(settings.wordGap);
+      elements.speechRate.value = String(settings.rate);
+      elements.repeatCountValue.textContent = `${settings.repeats} 遍`;
+      elements.repeatGapValue.textContent = `${settings.repeatGap} 秒`;
+      elements.wordGapValue.textContent = `${settings.wordGap} 秒`;
+      elements.speechRateValue.textContent = `${settings.rate.toFixed(2)}×`;
+    }
+
+    function syncSettingsFromControls() {
+      settings = {
+        repeats: Math.round(clamp(elements.repeatCount.value, 1, 5, 2)),
+        repeatGap: Math.round(clamp(elements.repeatGap.value, 1, 20, 5)),
+        wordGap: Math.round(clamp(elements.wordGap.value, 3, 30, 10)),
+        rate: clamp(elements.speechRate.value, 0.6, 1.2, 0.88),
+        voiceKey: elements.voiceSelect.value
+      };
+      updateSettingsUI();
+      saveSettings();
+      renderStage();
+    }
+
+    function configureSliders() {
+      [
+        [elements.repeatCount, "repeats"],
+        [elements.repeatGap, "repeatGap"],
+        [elements.wordGap, "wordGap"],
+        [elements.speechRate, "rate"]
+      ].forEach(([input, key]) => {
+        input.addEventListener("input", () => {
+          settings[key] = Number(input.value);
+          updateSettingsUI();
+          saveSettings();
+          if (!state.running) renderStage();
+        });
+      });
+
+      elements.voiceSelect.addEventListener("change", () => {
+        settings.voiceKey = elements.voiceSelect.value;
+        saveSettings();
+        const voice = selectedVoice();
+        if (voice) showToast(`已选择 ${voice.name}`);
+      });
+    }
+
+    function renderVoiceOptions() {
+      if (!supportsSpeech) {
+        elements.voiceNote.textContent = "当前浏览器无法读取语音列表。";
+        return;
+      }
+
+      const english = voices.filter((voice) => /^en([-_]|$)/i.test(voice.lang));
+      const others = voices.filter((voice) => !/^en([-_]|$)/i.test(voice.lang));
+      elements.voiceSelect.innerHTML = "";
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = english.length ? "系统默认英文语音" : "系统默认语音";
+      elements.voiceSelect.append(defaultOption);
+
+      const addGroup = (label, items) => {
+        if (!items.length) return;
+        const group = document.createElement("optgroup");
+        group.label = label;
+        items.forEach((voice) => {
+          const option = document.createElement("option");
+          option.value = voiceKey(voice);
+          option.textContent = `${voice.name} · ${voice.lang}${voice.localService ? " · 本机" : ""}`;
+          group.append(option);
+        });
+        elements.voiceSelect.append(group);
+      };
+
+      addGroup("英语语音", english);
+      addGroup("其他系统语音", others);
+
+      const savedExists = voices.some((voice) => voiceKey(voice) === settings.voiceKey);
+      if (!savedExists) {
+        const preferred = english.find((voice) => /^en[-_]US/i.test(voice.lang))
+          || english.find((voice) => voice.localService)
+          || english[0]
+          || null;
+        settings.voiceKey = preferred ? voiceKey(preferred) : "";
+      }
+
+      elements.voiceSelect.value = settings.voiceKey;
+
+      if (english.length) {
+        elements.voiceNote.textContent = `已找到 ${english.length} 个英文语音。优先使用本机语音会更稳定。`;
+      } else if (voices.length) {
+        elements.voiceNote.textContent = "未找到英文语音，将尝试使用系统默认语音朗读英文。";
+      } else {
+        elements.voiceNote.textContent = "系统尚未返回语音列表。首次朗读后，浏览器通常会继续加载。";
+      }
+    }
+
+    function loadVoices() {
+      if (!supportsSpeech) return;
+      voices = synth.getVoices();
+      renderVoiceOptions();
+    }
+
+    function initializeSpeechSupport() {
+      if (!supportsSpeech) {
+        elements.browserState.textContent = "语音不可用";
+        elements.browserState.classList.add("is-warning");
+        elements.supportNotice.hidden = false;
+        elements.startButton.disabled = true;
+        elements.voiceNote.textContent = "请更换支持 Web Speech API 的浏览器。";
+        return;
+      }
+
+      elements.browserState.textContent = "语音合成已就绪";
+      loadVoices();
+      synth.addEventListener?.("voiceschanged", loadVoices);
+      window.setTimeout(loadVoices, 300);
+      window.setTimeout(loadVoices, 1200);
+      window.setTimeout(loadVoices, 3000);
+    }
+
+    function renderRails() {
+      const total = state.words.length || parseWords(elements.wordInput.value).length;
+      elements.wordRails.innerHTML = "";
+      if (!total) return;
+
+      const fragment = document.createDocumentFragment();
+      for (let index = 0; index < total; index += 1) {
+        const rail = document.createElement("span");
+        rail.className = "word-rail";
+        if (state.phase === "complete" || index < state.index) rail.classList.add("is-done");
+        if (index === state.index && state.phase !== "complete") rail.classList.add("is-current");
+        fragment.append(rail);
+      }
+      elements.wordRails.append(fragment);
+    }
+
+    function phaseCopy() {
+      if (state.manualReplay) {
+        return {
+          label: "正在重播当前单词",
+          hint: "这次重播不会改变单词进度。"
+        };
+      }
+      if (state.phase === "complete") {
+        return {
+          label: "听写完成",
+          hint: "本轮已经结束。可以再听一轮，或修改词表后从头开始。"
+        };
+      }
+      if (state.phase === "repeatWait") {
+        return {
+          label: state.paused ? "已暂停 · 重复间隔" : "同一单词 · 重复间隔",
+          hint: `倒计时结束后朗读第 ${state.repetition + 1} 遍。`
+        };
+      }
+      if (state.phase === "wordWait") {
+        return {
+          label: state.paused ? "已暂停 · 单词间隔" : "准备下一个单词",
+          hint: "利用这段时间检查拼写；倒计时结束后自动继续。"
+        };
+      }
+      if (state.phase === "speaking") {
+        return {
+          label: state.paused ? "已暂停 · 正在朗读" : `第 ${state.repetition} 遍朗读`,
+          hint: state.repetition < settings.repeats
+            ? `朗读结束后等待 ${settings.repeatGap} 秒，再读第 ${state.repetition + 1} 遍。`
+            : state.index === state.words.length - 1
+              ? "这是本轮最后一个单词的最后一遍。"
+              : `完成后留出 ${settings.wordGap} 秒书写和检查。`
+        };
+      }
+      return {
+        label: "准备就绪",
+        hint: `开始后将朗读 ${settings.repeats} 遍，同一单词间隔 ${settings.repeatGap} 秒，单词间隔 ${settings.wordGap} 秒。`
+      };
+    }
+
+    function renderTimer() {
+      elements.timerRing.classList.remove("is-speaking", "is-paused", "is-complete");
+      const manual = state.manualReplay;
+      const phase = state.phase;
+
+      if (manual) {
+        elements.timerRing.classList.add("is-speaking");
+        elements.timerNumber.textContent = "↻";
+        elements.timerUnit.textContent = "单次";
+        elements.timerLabel.textContent = "重播中";
+        elements.timerProgress.style.strokeDashoffset = "0";
+        return;
+      }
+
+      if (phase === "speaking") {
+        elements.timerRing.classList.add("is-speaking");
+        if (state.paused) elements.timerRing.classList.add("is-paused");
+        elements.timerNumber.textContent = state.paused ? "Ⅱ" : "···";
+        elements.timerUnit.textContent = state.paused ? "已暂停" : "朗读";
+        elements.timerLabel.textContent = state.paused ? "语音已暂停" : `第 ${state.repetition} 遍`;
+        elements.timerProgress.style.strokeDashoffset = "0";
+        return;
+      }
+
+      if (phase === "repeatWait" || phase === "wordWait") {
+        const wait = state.wait;
+        const remaining = wait ? Math.max(0, wait.remaining) : 0;
+        const duration = wait ? wait.duration : 1;
+        const seconds = Math.max(0, Math.ceil(remaining / 1000));
+        const progress = duration > 0 ? Math.max(0, Math.min(1, remaining / duration)) : 0;
+        elements.timerNumber.textContent = String(seconds);
+        elements.timerUnit.textContent = "秒";
+        elements.timerLabel.textContent = state.paused
+          ? "倒计时已暂停"
+          : phase === "repeatWait" ? "重复间隔" : "单词间隔";
+        if (state.paused) elements.timerRing.classList.add("is-paused");
+        elements.timerProgress.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - progress));
+        return;
+      }
+
+      if (phase === "complete") {
+        elements.timerRing.classList.add("is-complete");
+        elements.timerNumber.textContent = "✓";
+        elements.timerUnit.textContent = "完成";
+        elements.timerLabel.textContent = "本轮结束";
+        elements.timerProgress.style.strokeDashoffset = "0";
+        return;
+      }
+
+      elements.timerNumber.textContent = "待";
+      elements.timerUnit.textContent = "准备";
+      elements.timerLabel.textContent = "等待开始";
+      elements.timerProgress.style.strokeDashoffset = String(CIRCUMFERENCE);
+    }
+
+    function animateWordChange(word) {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (lastWordShown === word) return;
+      lastWordShown = word;
+      window.clearTimeout(fadeTimer);
+      elements.currentWord.animate(
+        [
+          { opacity: 0.2, transform: "translateY(5px)" },
+          { opacity: 1, transform: "translateY(0)" }
+        ],
+        { duration: 260, easing: "ease-out" }
+      );
+    }
+
+    function renderStage() {
+      const wordsInEditor = parseWords(elements.wordInput.value);
+      const total = state.words.length || wordsInEditor.length;
+      if (!state.running) {
+        const previewCount = wordsInEditor.length;
+        elements.overallProgress.textContent = previewCount
+          ? `第 ${String(Math.min(state.index + 1, previewCount)).padStart(2, "0")} 个 · 共 ${previewCount} 个`
+          : "词表为空";
+        elements.positionLabel.textContent = formatPosition();
+      } else {
+        elements.overallProgress.textContent = `第 ${String(state.index + 1).padStart(2, "0")} 个 · 共 ${total} 个`;
+        elements.positionLabel.textContent = formatPosition();
+      }
+
+      const word = currentWordText();
+      elements.currentWord.textContent = state.masked ? "••••••" : word;
+      elements.currentWord.classList.toggle("is-masked", state.masked);
+      elements.currentWord.setAttribute("aria-label", state.masked ? "当前单词已遮蔽" : `当前单词 ${word}`);
+      animateWordChange(word);
+
+      const copy = phaseCopy();
+      elements.stageLabel.textContent = copy.label;
+      elements.nextHint.textContent = copy.hint;
+      elements.stageMeta.classList.toggle("is-speaking", state.phase === "speaking" || state.manualReplay);
+      elements.stageMeta.classList.toggle("is-complete", state.phase === "complete");
+
+      elements.maskButton.textContent = state.masked ? "显示单词" : "遮蔽单词";
+      elements.maskButton.setAttribute("aria-pressed", String(state.masked));
+
+      const canReplay = state.running && state.phase !== "complete" && !state.manualReplay;
+      elements.startButton.disabled = state.running || !supportsSpeech;
+      elements.startButton.textContent = state.phase === "complete" ? "再听一轮" : state.running ? "正在播放" : "开始听写";
+      elements.pauseButton.disabled = !state.running || !supportsSpeech;
+      elements.pauseButton.textContent = state.paused ? "继续" : "暂停";
+      elements.pauseButton.classList.toggle("is-resume", state.paused);
+      elements.replayButton.disabled = !canReplay;
+      elements.skipButton.disabled = !state.running || !supportsSpeech;
+      elements.restartButton.disabled = (!state.running && state.phase !== "complete") || !supportsSpeech;
+      elements.stopButton.disabled = (!state.running && state.phase !== "complete") || !supportsSpeech;
+      elements.wordInput.readOnly = state.running;
+
+      if (state.running) {
+        elements.listState.textContent = state.wordsDirty
+          ? "词表已修改，点击“从头”后生效"
+          : "播放期间词表已锁定";
+        elements.listState.classList.toggle("dirty", state.wordsDirty);
+      } else {
+        elements.listState.textContent = "修改后点击“从头”即可生效";
+        elements.listState.classList.remove("dirty");
+      }
+
+      renderRails();
+      renderTimer();
+    }
+
+    function updateWordEditorState() {
+      const words = parseWords(elements.wordInput.value);
+      elements.wordCount.textContent = String(words.length);
+      elements.inputHint.textContent = words.length ? "本机处理" : "至少输入一个单词";
+      if (!state.running) {
+        state.words = words;
+        state.index = Math.min(state.index, Math.max(0, words.length - 1));
+      } else {
+        state.wordsDirty = words.join("\n") !== state.words.join("\n");
+      }
+      renderStage();
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      elements.toast.textContent = message;
+      elements.toast.classList.add("is-visible");
+      toastTimer = window.setTimeout(() => {
+        elements.toast.classList.remove("is-visible");
+      }, 2400);
+    }
+
+    function clearWaitTimer() {
+      if (state.timerId) {
+        window.clearInterval(state.timerId);
+        state.timerId = 0;
+      }
+    }
+
+    function armWaitTimer() {
+      clearWaitTimer();
+      if (!state.wait || !state.running || state.paused) return;
+      state.wait.deadline = Date.now() + state.wait.remaining;
+      state.timerId = window.setInterval(tickWait, 100);
+      tickWait();
+    }
+
+    function tickWait() {
+      if (!state.running || state.paused || !state.wait) return;
+      state.wait.remaining = Math.max(0, state.wait.deadline - Date.now());
+
+      if (state.wait.remaining <= 0) {
+        clearWaitTimer();
+        const next = state.wait.next;
+        state.wait = null;
+        if (typeof next === "function") {
+          next();
+        } else {
+          renderStage();
+        }
+        return;
+      }
+
+      renderTimer();
+    }
+
+    function scheduleWait(seconds, phase, next) {
+      clearWaitTimer();
+      const duration = Math.max(1000, Math.round(seconds * 1000));
+      state.phase = phase;
+      state.wait = {
+        duration,
+        remaining: duration,
+        deadline: 0,
+        next
+      };
+      armWaitTimer();
+      renderStage();
+    }
+
+    function invalidateSpeech() {
+      window.clearTimeout(state.speechWatchdogId);
+      state.speechWatchdogId = 0;
+      state.speechToken += 1;
+      if (supportsSpeech) {
+        try {
+          synth.cancel();
+        } catch (error) {
+          // 某些浏览器在尚未开始朗读时调用 cancel 会抛出异常。
+        }
+      }
+    }
+
+    function armSpeechWatchdog(token, manual) {
+      window.clearTimeout(state.speechWatchdogId);
+      state.speechWatchdogId = window.setTimeout(() => {
+        if (token !== state.speechToken || !state.running) return;
+        if (state.paused) {
+          armSpeechWatchdog(token, manual);
+          return;
+        }
+        if (supportsSpeech && (synth.speaking || synth.pending)) {
+          try {
+            synth.cancel();
+          } catch (error) {
+            // 语音引擎无响应时直接恢复流程。
+          }
+          showToast("语音引擎响应超时，已自动继续。");
+        }
+        if (manual) finishManualReplay();
+        else if (state.phase === "speaking") finishNormalSpeech();
+      }, 18000);
+    }
+
+    function makeUtterance(text, token, manual = false) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voice = selectedVoice();
+      if (voice) utterance.voice = voice;
+      utterance.lang = voice?.lang || "en-US";
+      utterance.rate = settings.rate;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.onend = () => {
+        if (token !== state.speechToken || !state.running) return;
+        window.clearTimeout(state.speechWatchdogId);
+        if (manual) {
+          finishManualReplay();
+        } else if (state.paused) {
+          state.pendingAfterSpeech = true;
+          renderStage();
+        } else {
+          finishNormalSpeech();
+        }
+      };
+      utterance.onerror = (event) => {
+        if (token !== state.speechToken || !state.running) return;
+        if (event.error === "interrupted" || event.error === "canceled") return;
+        window.clearTimeout(state.speechWatchdogId);
+        if (manual) {
+          finishManualReplay();
+        } else {
+          state.paused = true;
+          elements.browserState.textContent = "语音播放失败";
+          elements.browserState.classList.add("is-warning");
+          showToast("语音暂时无法播放，请检查系统英文语音或换一个语音。");
+          renderStage();
+        }
+      };
+      armSpeechWatchdog(token, manual);
+      return utterance;
+    }
+
+    function speakCurrentRepetition() {
+      if (!state.running || !supportsSpeech) return;
+      state.repetition += 1;
+      state.phase = "speaking";
+      state.wait = null;
+      state.manualReplay = false;
+      state.pendingAfterSpeech = false;
+      const token = ++state.speechToken;
+      renderStage();
+      const utterance = makeUtterance(currentWordText(), token, false);
+      synth.speak(utterance);
+    }
+
+    function finishNormalSpeech() {
+      if (!state.running) return;
+      state.pendingAfterSpeech = false;
+
+      if (state.repetition < settings.repeats) {
+        scheduleWait(settings.repeatGap, "repeatWait", speakCurrentRepetition);
+        return;
+      }
+
+      if (state.index >= state.words.length - 1) {
+        completeSession();
+        return;
+      }
+
+      state.index += 1;
+      state.repetition = 0;
+      scheduleWait(settings.wordGap, "wordWait", speakCurrentRepetition);
+    }
+
+    function finishManualReplay() {
+      if (!state.running) return;
+      state.manualReplay = false;
+      const context = state.manualContext;
+      state.manualContext = null;
+
+      if (!context) {
+        renderStage();
+        return;
+      }
+
+      if (context.phase === "repeatWait" || context.phase === "wordWait") {
+        state.phase = context.phase;
+        state.wait = context.wait;
+        if (!state.paused) armWaitTimer();
+        renderStage();
+        return;
+      }
+
+      if (context.phase === "speaking") {
+        state.phase = "speaking";
+        if (state.paused) {
+          state.pendingAfterSpeech = true;
+          renderStage();
+        } else {
+          finishNormalSpeech();
+        }
+        return;
+      }
+
+      renderStage();
+    }
+
+    function startSession() {
+      if (!supportsSpeech) return;
+      const words = parseWords(elements.wordInput.value);
+      if (!words.length) {
+        elements.wordInput.focus();
+        showToast("请先在下方输入至少一个单词。");
+        return;
+      }
+
+      invalidateSpeech();
+      clearWaitTimer();
+      state.words = words;
+      state.index = 0;
+      state.repetition = 0;
+      state.phase = "speaking";
+      state.running = true;
+      state.paused = false;
+      state.manualReplay = false;
+      state.manualContext = null;
+      state.pendingAfterSpeech = false;
+      state.wordsDirty = false;
+      state.wait = null;
+      elements.browserState.textContent = "语音合成已就绪";
+      elements.browserState.classList.remove("is-warning");
+      speakCurrentRepetition();
+    }
+
+    function pausePlayback() {
+      if (!state.running || state.paused) return;
+      state.paused = true;
+      if (state.wait) {
+        state.wait.remaining = Math.max(0, state.wait.deadline - Date.now());
+        clearWaitTimer();
+      }
+      if (supportsSpeech && synth.speaking && !synth.paused) {
+        try {
+          synth.pause();
+        } catch (error) {
+          // 暂停失败时仍保留当前状态，继续时会做一次兜底。
+        }
+      }
+      renderStage();
+    }
+
+    function resumePlayback() {
+      if (!state.running || !state.paused) return;
+      state.paused = false;
+
+      if (supportsSpeech && synth.paused) {
+        try {
+          synth.resume();
+        } catch (error) {
+          // 下面会检查是否还有语音在播放。
+        }
+      }
+
+      if (state.phase === "repeatWait" || state.phase === "wordWait") {
+        armWaitTimer();
+      } else if (
+        state.phase === "speaking"
+        && state.pendingAfterSpeech
+        && !synth.speaking
+        && !synth.pending
+      ) {
+        state.pendingAfterSpeech = false;
+        finishNormalSpeech();
+        return;
+      }
+      renderStage();
+    }
+
+    function skipCurrentWord() {
+      if (!state.running) return;
+      invalidateSpeech();
+      clearWaitTimer();
+      state.paused = false;
+      state.manualReplay = false;
+      state.manualContext = null;
+      state.pendingAfterSpeech = false;
+
+      if (state.index >= state.words.length - 1) {
+        completeSession();
+        return;
+      }
+
+      state.index += 1;
+      state.repetition = 0;
+      scheduleWait(settings.wordGap, "wordWait", speakCurrentRepetition);
+      showToast("已跳过当前单词，进入单词间隔。");
+    }
+
+    function replayCurrentWord() {
+      if (!state.running || state.phase === "complete" || state.manualReplay) return;
+      const context = {
+        phase: state.phase,
+        wait: state.wait
+          ? {
+              duration: state.wait.duration,
+              remaining: Math.max(0, state.wait.deadline - Date.now()),
+              deadline: 0,
+              next: state.wait.next
+            }
+          : null
+      };
+
+      clearWaitTimer();
+      invalidateSpeech();
+      state.manualReplay = true;
+      state.manualContext = context;
+      state.pendingAfterSpeech = false;
+      const token = ++state.speechToken;
+      renderStage();
+      const utterance = makeUtterance(currentWordText(), token, true);
+      synth.speak(utterance);
+    }
+
+    function completeSession() {
+      clearWaitTimer();
+      invalidateSpeech();
+      state.running = false;
+      state.paused = false;
+      state.phase = "complete";
+      state.manualReplay = false;
+      state.manualContext = null;
+      state.pendingAfterSpeech = false;
+      state.wait = null;
+      showToast("听写完成，可以核对拼写了。");
+      renderStage();
+    }
+
+    function stopSession() {
+      invalidateSpeech();
+      clearWaitTimer();
+      state.running = false;
+      state.paused = false;
+      state.phase = "ready";
+      state.index = 0;
+      state.repetition = 0;
+      state.manualReplay = false;
+      state.manualContext = null;
+      state.pendingAfterSpeech = false;
+      state.wait = null;
+      state.words = parseWords(elements.wordInput.value);
+      state.wordsDirty = false;
+      renderStage();
+    }
+
+    function handleKeyboard(event) {
+      const active = document.activeElement;
+      const isTyping = active && (
+        active.tagName === "TEXTAREA"
+        || active.tagName === "INPUT"
+        || active.tagName === "SELECT"
+        || active.isContentEditable
+      );
+      if (isTyping || event.altKey || event.ctrlKey || event.metaKey) return;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (!state.running) {
+          startSession();
+        } else if (state.paused) {
+          resumePlayback();
+        } else {
+          pausePlayback();
+        }
+      } else if (event.key.toLowerCase() === "r") {
+        replayCurrentWord();
+      } else if (event.key.toLowerCase() === "n") {
+        skipCurrentWord();
+      }
+    }
+
+    function initialize() {
+      elements.wordInput.value = DEFAULT_WORDS;
+      settings = {
+        repeats: Math.round(clamp(settings.repeats, 1, 5, 2)),
+        repeatGap: Math.round(clamp(settings.repeatGap, 1, 20, 5)),
+        wordGap: Math.round(clamp(settings.wordGap, 3, 30, 10)),
+        rate: clamp(settings.rate, 0.6, 1.2, 0.88),
+        voiceKey: settings.voiceKey
+      };
+      state.words = parseWords(DEFAULT_WORDS);
+      elements.timerProgress.style.strokeDasharray = String(CIRCUMFERENCE);
+      updateSettingsUI();
+      configureSliders();
+      initializeSpeechSupport();
+      updateWordEditorState();
+
+      elements.wordInput.addEventListener("input", updateWordEditorState);
+      elements.startButton.addEventListener("click", startSession);
+      elements.pauseButton.addEventListener("click", () => {
+        if (state.paused) resumePlayback();
+        else pausePlayback();
+      });
+      elements.replayButton.addEventListener("click", replayCurrentWord);
+      elements.skipButton.addEventListener("click", skipCurrentWord);
+      elements.restartButton.addEventListener("click", startSession);
+      elements.stopButton.addEventListener("click", stopSession);
+      elements.maskButton.addEventListener("click", () => {
+        state.masked = !state.masked;
+        renderStage();
+      });
+      document.addEventListener("keydown", handleKeyboard);
+      window.addEventListener("beforeunload", () => {
+        if (supportsSpeech) synth.cancel();
+      });
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
